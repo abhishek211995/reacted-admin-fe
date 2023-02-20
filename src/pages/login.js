@@ -8,29 +8,53 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import axios from "axios";
 import { baseUrl } from "../constants/api";
 import { Logo } from "../components/logo";
+import  useAuth  from "../contexts/auth-context";
+import { useEffect } from "react";
 
 const Login = () => {
   const router = useRouter();
   const theme = useTheme();
+
+  const { signIn,loading } = useAuth();
   const validationSchema = Yup.object({
     email: Yup.string().email("Must be a valid email").max(255).required("Email is required"),
     password: Yup.string().max(255).required("Password is required"),
   });
 
+  useEffect(() => {
+    const access_key = localStorage.getItem("access_key");
+    const role_id = localStorage.getItem("role_id");
+    if (access_key && role_id) {
+      router.replace("/");
+    } else
+      router.replace("/login");
+  }, []);
+  
+
   const handleSubmit = async (data) => {
     try {
       const { email, password } = data;
-      const res = await axios.post(`${baseUrl}/login/`, data, {
+      const response = await axios.post(`${baseUrl}/login`,data, {
         params: {
           email,
           password,
         },
       });
-      localStorage.setItem('access-key', JSON.stringify(res.data.data[0].access_token));
-      if(localStorage.getItem('access-key')) {
-        router.push('/');
+      if (response.status === 200 && response.data.success) {
+        console.log("Logging in");
+        const userData = {
+          name: response.data?.data[0].first_name,
+          email: response.data.data[0].email,
+          userId: response.data.data[0].user_id,
+          access_token: response.data.data[0].access_token,
+          role_id: response.data.data[0].role_id,
+          role_id1: response.data.data[0].role_id1,
+          phone: response.data.data[0].phone,
+        }
+        signIn(userData);
+        router.replace("/");
       } else {
-        alert("Something went wrong, please try again later")
+        console.log("Login Failed");
       }
     } catch (error) {
       console.log(error);
@@ -49,6 +73,7 @@ const Login = () => {
 
   return (
     <>
+      {loading && <div>Loading...</div>}
       <Head>
         <title>Login | Reacted</title>
       </Head>
@@ -119,7 +144,7 @@ const Login = () => {
             <Box sx={{ py: 2 }}>
               <Button
                 color="primary"
-                disabled={formik.isSubmitting}
+                // disabled={formik.isSubmitting}
                 fullWidth
                 size="large"
                 type="submit"
